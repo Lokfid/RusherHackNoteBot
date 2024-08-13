@@ -1,7 +1,5 @@
 package org.lokfid;
 
-
-import com.mojang.datafixers.kinds.IdF;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -305,8 +303,11 @@ public class NoteBotModule extends ToggleableModule {
 
 	}
 
-	//Create Command
-	//this code is shit but i will do nothing about it :D
+	/*
+	Create Command
+	this code is shit but i will do nothing about it :D
+	p.s. John said to make it like this and it works so its fine
+	*/
 	@Override
 	public ModuleCommand createCommand() {
 		return new ModuleCommand(this){

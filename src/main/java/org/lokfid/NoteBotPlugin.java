@@ -6,7 +6,7 @@ import org.rusherhack.client.api.plugin.Plugin;
 /**
  * Example rusherhack plugin
  *
- * @author John200410
+ * @author Lokfid
  */
 public class NoteBotPlugin extends Plugin {
 	
