@@ -15,12 +15,9 @@ public class NoteBotPlugin extends Plugin {
 		
 		//logger
 		this.getLogger().info("NoteBot Loaded!");
-
 		final NoteBotModule noteBotModule = new NoteBotModule();
 		RusherHackAPI.getModuleManager().registerFeature(noteBotModule);
 
-		final NoteBotCommand noteBotCommand = new NoteBotCommand();
-		RusherHackAPI.getCommandManager().registerFeature(noteBotCommand);
 	}
 	
 	@Override

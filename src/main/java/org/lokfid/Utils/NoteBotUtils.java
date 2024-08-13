@@ -87,8 +87,6 @@ public class NoteBotUtils {
                             } else {
                                 skipNote = false;
                             }
-                        } else if (msg.getCommand() == 0xB0) {
-                        } else if (msg.getCommand() == 0xB0) {
                         }
                     } else if (message instanceof MetaMessage) {
                         MetaMessage msg = (MetaMessage) message;

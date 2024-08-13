@@ -1,6 +1,7 @@
 package org.lokfid;
 
 
+import org.rusherhack.client.api.RusherHackAPI;
 import org.rusherhack.client.api.events.client.EventUpdate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -15,11 +16,14 @@ import org.lokfid.Utils.NoteBotFileManager;
 import org.lokfid.Utils.NoteBotUtils;
 import org.lokfid.type.Note;
 import org.lokfid.type.Song;
+import org.rusherhack.client.api.feature.command.ModuleCommand;
+import org.rusherhack.client.api.feature.module.Module;
 import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
 import org.rusherhack.client.api.utils.ChatUtils;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.rusherhack.core.command.annotations.CommandExecutor;
 import org.rusherhack.core.event.subscribe.Subscribe;
 
 import java.util.*;
@@ -33,7 +37,6 @@ import java.util.Map.Entry;
  */
 @SuppressWarnings("unused")
 public class NoteBotModule extends ToggleableModule {
-
 	/* Status */
 
 	public static boolean playing = false;
@@ -49,6 +52,19 @@ public class NoteBotModule extends ToggleableModule {
 	private static Map<BlockPos, Integer> blockPitches = new HashMap<>();
 	private static int timer = -10;
 	private static int tuneDelay = 0;
+
+	private static String listQueue() {
+		StringBuilder result = new StringBuilder();
+
+		result.append("§6Queue:");
+
+		for (int i = 0; i < NoteBotModule.queue.size(); i++) {
+			result.append("\n§6- §e" + i + ": §a" + NoteBotModule.queue.get(i));
+		}
+
+		return result.toString();
+	}
+
 
 	public static int getNote(BlockPos pos) {
 		if (!isNoteblock(pos)) return -1;
@@ -202,7 +218,7 @@ public class NoteBotModule extends ToggleableModule {
 	}
 
 	public NoteBotModule() {
-		super("NoteBotModule", "NoteBot Module (just turn it on)", ModuleCategory.CLIENT);
+		super("NoteBot", "NoteBot Module (just turn it on)", ModuleCategory.CLIENT);
 	}
 
 	@Subscribe
@@ -282,14 +298,80 @@ public class NoteBotModule extends ToggleableModule {
 
 	}
 
+	//Create Command
+	@Override
+	public ModuleCommand createCommand() {
+		return new ModuleCommand(this){
+			@CommandExecutor(subCommand = "queue list")
+			private static int queue() {
+				ChatUtils.print(listQueue());
+				return 1;
+			}
+
+			@CommandExecutor(subCommand = "queue add")
+			@CommandExecutor.Argument({"string"})
+			private static int queueadd(String string) {
+				NoteBotModule.queue.add(string);
+
+				ChatUtils.print(("§6Added §a" + string) + "§6 to the queue.");
+
+				return 1;
+			}
+
+			@CommandExecutor(subCommand = "queue del")
+			@CommandExecutor.Argument({"index"})
+			private static int queuedel(int index) {
+
+				String name;
+
+				try {
+					name = NoteBotModule.queue.remove(index);
+				} catch (IndexOutOfBoundsException e) {
+					ChatUtils.print("§cIndex out of bounds.");
+					return 0;
+				}
+
+				ChatUtils.print("§6Removed §a" + name + "§6 at §e" + index + " §6from the queue.");
+
+				return 1;
+			}
+
+			@CommandExecutor(subCommand = "queue clear")
+			private static int queueclear() {
+				int amount = NoteBotModule.queue.size();
+				NoteBotModule.queue.clear();
+				ChatUtils.print("§6Cleared §a" + amount + "§6 songs from the queue.");
+				return 1;
+			}
+
+
+			@CommandExecutor(subCommand = "start")
+			private int start() {
+				NoteBotModule.super.toggle();
+				NoteBotModule.playing = true;
+				return 1;
+			}
+
+			@CommandExecutor(subCommand = {"stop"})
+			private static int stop( ) {
+				NoteBotModule.playing = false;
+				NoteBotModule.song = null;
+				return 1;
+			}
+		};
+	}
+
+
+
 	@Override
 	public void onEnable() {
 		NoteBotFileManager.init();
 		}
 
-	
+
 	@Override
 	public void onDisable() {
 
 	}
+
 }
