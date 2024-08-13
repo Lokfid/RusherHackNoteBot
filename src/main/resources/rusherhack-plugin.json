@@ -1,0 +1,12 @@
+{
+  "Plugin-Class": "org.lokfid.NoteBotPlugin",
+  "Name": "NoteBot Plugin",
+  "Version": "${plugin_version}",
+  "Description": "NoteBot rusherhack Plugin",
+  "Authors": [
+    "Lokfid"
+  ],
+  "Minecraft-Versions": [
+    "1.20.4"
+  ]
+}
