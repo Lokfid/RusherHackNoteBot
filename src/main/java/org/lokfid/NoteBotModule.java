@@ -1,7 +1,11 @@
 package org.lokfid;
 
 
-import org.rusherhack.client.api.RusherHackAPI;
+import com.mojang.datafixers.kinds.IdF;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import org.rusherhack.client.api.events.client.EventUpdate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -17,7 +21,6 @@ import org.lokfid.Utils.NoteBotUtils;
 import org.lokfid.type.Note;
 import org.lokfid.type.Song;
 import org.rusherhack.client.api.feature.command.ModuleCommand;
-import org.rusherhack.client.api.feature.module.Module;
 import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
 import org.rusherhack.client.api.utils.ChatUtils;
@@ -53,16 +56,20 @@ public class NoteBotModule extends ToggleableModule {
 	private static int timer = -10;
 	private static int tuneDelay = 0;
 
-	private static String listQueue() {
+	private static Component listQueue() {
 		StringBuilder result = new StringBuilder();
+		final MutableComponent l1 = Component.literal("Queue:").withStyle(ChatFormatting.GOLD);
+		final MutableComponent l2 = Component.literal("\n - ").withStyle(ChatFormatting.GOLD);
 
-		result.append("§6Queue:");
-
+		final MutableComponent list = Component.empty().append(l1).append(l2);
 		for (int i = 0; i < NoteBotModule.queue.size(); i++) {
-			result.append("\n§6- §e" + i + ": §a" + NoteBotModule.queue.get(i));
+			final MutableComponent l3 = Component.literal(String.valueOf(i)).withStyle(ChatFormatting.YELLOW);
+			final MutableComponent l4 = Component.literal(": ").withStyle(ChatFormatting.YELLOW);
+			final MutableComponent l5 = Component.literal(NoteBotModule.queue.get(i)).withStyle(ChatFormatting.GREEN);
+			list.append(l3).append(l4).append(l5);
 		}
 
-		return result.toString();
+		return list;
 	}
 
 
@@ -170,10 +177,10 @@ public class NoteBotModule extends ToggleableModule {
 		try {
             assert mc.gameMode != null;
             if (!mc.gameMode.getPlayerMode().isSurvival()) {
-				ChatUtils.print("§cNot in Survival mode!");
+				ChatUtils.print(Component.literal("§cNot in Survival mode!"));
 				return;
 			} else if (song == null) {
-				ChatUtils.print("§6No song in queue!, Use §c*notebot queueadd §6to add a song.");
+				ChatUtils.print(Component.literal("§6No song in queue!, Use §c*notebot queueadd §6to add a song."));
 				return;
 			}
 		} catch (NullPointerException e) {
@@ -211,7 +218,7 @@ public class NoteBotModule extends ToggleableModule {
 			int missingCount = requiredCount - foundCount;
 
 			if (missingCount > 0) {
-				ChatUtils.print("§6Warning: Missing §c" + missingCount + " §6" + instrument + " Noteblocks");
+				ChatUtils.print(Component.literal("§6Warning: Missing §c" + missingCount + " §6" + instrument + " Noteblocks"));
 			}
 		}
 
@@ -227,7 +234,7 @@ public class NoteBotModule extends ToggleableModule {
 
 		if (song == null) {
 			if (queue.isEmpty()) {
-				ChatUtils.print("§cYou have no songs in your queue!");
+				ChatUtils.print(Component.literal("§cYou have no songs in your queue!"));
 				stop();
 				return;
 			}
@@ -273,14 +280,14 @@ public class NoteBotModule extends ToggleableModule {
 				song = null;
 				return;
 			} else {
-				ChatUtils.print("§6The queue is empty, stopping...");
+				ChatUtils.print(Component.literal("§6The queue is empty, stopping..."));
 				stop();
 				return;
 			}
 		}
 
 		if (timer == -10) {
-			ChatUtils.print("§6Now Playing: §a" + song.filename);
+			ChatUtils.print(Component.literal("§6Now Playing: §a" + song.filename));
 		}
 
 		timer++;
@@ -299,64 +306,78 @@ public class NoteBotModule extends ToggleableModule {
 	}
 
 	//Create Command
+	//this code is shit but i will do nothing about it :D
 	@Override
 	public ModuleCommand createCommand() {
 		return new ModuleCommand(this){
 			@CommandExecutor(subCommand = "queue list")
-			private static int queue() {
-				ChatUtils.print(listQueue());
-				return 1;
+			private static Component queue() {
+				return listQueue();
 			}
 
 			@CommandExecutor(subCommand = "queue add")
 			@CommandExecutor.Argument({"string"})
-			private static int queueadd(String string) {
+			private static Component queueadd(String string) {
 				NoteBotModule.queue.add(string);
-
-				ChatUtils.print(("§6Added §a" + string) + "§6 to the queue.");
-
-				return 1;
+				final MutableComponent l1 = Component.literal("Added ").withStyle(Style.EMPTY.withColor(0xFFAA00));
+				final MutableComponent l2 = Component.literal(" to the queue").withStyle(Style.EMPTY.withColor(0xFFAA00));
+				final MutableComponent add = Component.empty()
+						.append(l1)
+						.append(string).withStyle(Style.EMPTY.withColor(0x55FF55))
+						.append(l2);
+				return add;
 			}
 
 			@CommandExecutor(subCommand = "queue del")
 			@CommandExecutor.Argument({"index"})
-			private static int queuedel(int index) {
+			private static Component queuedel(int index) {
 
 				String name;
-
+				final MutableComponent outofbounds = Component.literal("Index out of bounds.").withStyle(Style.EMPTY.withColor(0xFF5555));
+				final MutableComponent l1 = Component.literal("Removed").withColor(0xFFAA00);
+				final MutableComponent l2 = Component.literal("at").withColor(0xFFAA00);
+				final MutableComponent l3 = Component.literal("from the queue.").withColor(0xFFAA00);
+				final MutableComponent l4 = Component.literal(String.valueOf(index)).withColor(0xFFFF55);
 				try {
 					name = NoteBotModule.queue.remove(index);
 				} catch (IndexOutOfBoundsException e) {
-					ChatUtils.print("§cIndex out of bounds.");
-					return 0;
+					return outofbounds;
 				}
-
-				ChatUtils.print("§6Removed §a" + name + "§6 at §e" + index + " §6from the queue.");
-
-				return 1;
+				final MutableComponent del = Component.empty()
+						.append(l1).append(" " + name + " ").withColor(0x55FF55)
+						.append(l2)
+						.append(" ")
+						.append(l4)
+						.append(" ")
+						.append(l3);
+				return del;
 			}
 
 			@CommandExecutor(subCommand = "queue clear")
-			private static int queueclear() {
+			private static Component queueclear() {
 				int amount = NoteBotModule.queue.size();
 				NoteBotModule.queue.clear();
-				ChatUtils.print("§6Cleared §a" + amount + "§6 songs from the queue.");
-				return 1;
+				final MutableComponent l1 = Component.literal("Cleared ").withColor(0xFFAA00);
+				final MutableComponent l2 = Component.literal(String.valueOf(amount)).withColor(0x55FF55);
+				final MutableComponent l3 = Component.literal(" songs from the queue.").withColor(0xFFAA00);
+				final MutableComponent lspace = Component.literal("");
+				final MutableComponent clear = Component.empty().append(l1).append(l2).append(lspace).append(l3);
+				return clear;
 			}
 
 
 			@CommandExecutor(subCommand = "start")
-			private int start() {
-				NoteBotModule.super.toggle();
+			private void start() {
+				if(!NoteBotModule.super.isToggled()){
+					NoteBotModule.super.toggle();
+				}
 				NoteBotModule.playing = true;
-				return 1;
 			}
 
 			@CommandExecutor(subCommand = {"stop"})
-			private static int stop( ) {
+			private static void stop( ) {
 				NoteBotModule.playing = false;
 				NoteBotModule.song = null;
-				return 1;
 			}
 		};
 	}
@@ -371,7 +392,8 @@ public class NoteBotModule extends ToggleableModule {
 
 	@Override
 	public void onDisable() {
-
+		NoteBotModule.playing = false;
+		NoteBotModule.song = null;
 	}
 
 }

@@ -3,6 +3,7 @@ package org.lokfid.Utils;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import net.minecraft.Util;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.properties.NoteBlockInstrument;
@@ -173,10 +174,10 @@ public class NoteBotUtils {
 
                     int key = input.read() - 33;
                     if (key < 0) {
-                       ChatUtils.print("Note @" + tick + " Key: " + key + " is below the 2-octave range!");
+                       ChatUtils.print(Component.literal("Note @" + tick + " Key: " + key + " is below the 2-octave range!"));
                         key = Math.floorMod(key, 12);
                     } else if (key > 25) {
-                        ChatUtils.print("Note @" + tick + " Key: " + key + " is above the 2-octave range!");
+                        ChatUtils.print(Component.literal("Note @" + tick + " Key: " + key + " is above the 2-octave range!"));
                         key = Math.floorMod(key, 12) + 12;
                     }
 
@@ -189,14 +190,14 @@ public class NoteBotUtils {
 
 
         } catch (IOException e) {
-            ChatUtils.print("Error reading Nbs file!");
+            ChatUtils.print(Component.literal("Error reading Nbs file!"));
             e.printStackTrace();
         }
         return new Song(path.getFileName().toString(), name, author, "NBS v" + version, notes);
     }
 
     public static Song ErrorParsing(){
-        ChatUtils.print("Wrong file format, please use .midi or .nbs");
+        ChatUtils.print(Component.literal("Wrong file format, please use .midi or .nbs"));
         return null;
     }
     // Reads a little endian short
