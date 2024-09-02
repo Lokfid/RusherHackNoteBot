@@ -1,6 +1,5 @@
 package org.lokfid;
 
-import com.ibm.icu.text.ArabicShaping;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -29,7 +28,6 @@ import org.rusherhack.core.command.annotations.CommandExecutor;
 import org.rusherhack.core.event.subscribe.Subscribe;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
