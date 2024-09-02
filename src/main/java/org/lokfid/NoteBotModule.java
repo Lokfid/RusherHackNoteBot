@@ -1,5 +1,6 @@
 package org.lokfid;
 
+import com.ibm.icu.text.ArabicShaping;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -27,6 +28,8 @@ import net.minecraft.world.phys.Vec3;
 import org.rusherhack.core.command.annotations.CommandExecutor;
 import org.rusherhack.core.event.subscribe.Subscribe;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -74,15 +77,19 @@ public class NoteBotModule extends ToggleableModule {
 	public static int getNote(BlockPos pos) {
 		if (!isNoteblock(pos)) return -1;
 
-        assert mc.level != null;
-        return mc.level.getBlockState(pos).getValue(NoteBlock.NOTE);
-	}
+		if (mc.level != null) {
+			return mc.level.getBlockState(pos).getValue(NoteBlock.NOTE);
+		}
+        return 0;
+    }
 	public static void playBlock(BlockPos pos) {
 		if (!isNoteblock(pos)) return;
-        assert mc.gameMode != null;
-        mc.gameMode.startDestroyBlock(pos, Direction.UP);
-        assert mc.player != null;
-        mc.player.swing(InteractionHand.MAIN_HAND);
+		if (mc.gameMode != null) {
+			mc.gameMode.startDestroyBlock(pos, Direction.UP);
+		}
+		if (mc.player != null) {
+			mc.player.swing(InteractionHand.MAIN_HAND);
+		}
 	}
 
 	public static NoteBlockInstrument getInstrumentUnderneath(BlockPos pos) {
@@ -90,12 +97,14 @@ public class NoteBotModule extends ToggleableModule {
 
 		// Retrieve the block underneath
 		BlockPos posUnderneath = pos.below();
-        assert mc.level != null;
-        Block blockUnderneath = mc.level.getBlockState(posUnderneath).getBlock();
+		if (mc.level != null) {
+			Block blockUnderneath = mc.level.getBlockState(posUnderneath).getBlock();
 
-		// Return the instrument associated with the block underneath
-		return blockToInstrument(blockUnderneath);
-	}
+			// Return the instrument associated with the block underneath
+			return blockToInstrument(blockUnderneath);
+		}
+        return null;
+    }
 	public static NoteBlockInstrument blockToInstrument(Block block) {
 
 		// Specific block checks
@@ -157,9 +166,11 @@ public class NoteBotModule extends ToggleableModule {
 	}
 	public static boolean isNoteblock(BlockPos pos) {
 		// Checks if this block is a noteblock and the noteblock can be played
-        assert mc.level != null;
-        return mc.level.getBlockState(pos).getBlock() instanceof NoteBlock && mc.level.getBlockState(pos.above()).isAir();
-	}
+		if (mc.level != null) {
+			return mc.level.getBlockState(pos).getBlock() instanceof NoteBlock && mc.level.getBlockState(pos.above()).isAir();
+		}
+        return false;
+    }
 
 	public static void stop() {
 		playing = false;
@@ -173,53 +184,55 @@ public class NoteBotModule extends ToggleableModule {
 		blockPitches.clear();
 
 		try {
-            assert mc.gameMode != null;
-            if (!mc.gameMode.getPlayerMode().isSurvival()) {
-				ChatUtils.print(Component.literal("§cNot in Survival mode!"));
-				return;
-			} else if (song == null) {
-				ChatUtils.print(Component.literal("§6No song in queue!, Use §c*notebot queueadd §6to add a song."));
-				return;
+            if(mc.gameMode != null) {
+				if (!mc.gameMode.getPlayerMode().isSurvival()) {
+					ChatUtils.print(Component.literal("§cNot in Survival mode!"));
+					return;
+				} else if (song == null) {
+					ChatUtils.print(Component.literal("§6No song in queue!, Use §c*notebot queueadd §6to add a song."));
+					return;
+				}
 			}
 		} catch (NullPointerException e) {
 			return;
 		}
 
+
 		timer = -10;
 
-        assert mc.player != null;
-        BlockPos playerEyePos = new BlockPos((int) mc.player.getEyePosition().x, (int) mc.player.getEyePosition().y, (int) mc.player.getEyePosition().z);
+        if (mc.player != null) {
+			BlockPos playerEyePos = new BlockPos((int) mc.player.getEyePosition().x, (int) mc.player.getEyePosition().y, (int) mc.player.getEyePosition().z);
 
-		List<BlockPos> noteblocks = BlockPos.withinManhattanStream(playerEyePos, 5, 5, 5).filter(NoteBotModule::isNoteblock).map(BlockPos::immutable).toList();
+			List<BlockPos> noteblocks = BlockPos.withinManhattanStream(playerEyePos, 5, 5, 5).filter(NoteBotModule::isNoteblock).map(BlockPos::immutable).toList();
 
-		HashMap<NoteBlockInstrument, Integer> requiredInstruments = new HashMap<>();
-		HashMap<NoteBlockInstrument, Integer> foundInstruments = new HashMap<>();
+			HashMap<NoteBlockInstrument, Integer> requiredInstruments = new HashMap<>();
+			HashMap<NoteBlockInstrument, Integer> foundInstruments = new HashMap<>();
 
-		for (Note note : song.requirements) {
-			NoteBlockInstrument instrument = NoteBlockInstrument.values()[note.instrument];
-			requiredInstruments.put(instrument, requiredInstruments.getOrDefault(instrument, 0) + 1);
-			for (BlockPos pos : noteblocks) {
-				if (blockPitches.containsKey(pos)) continue;
+			for (Note note : song.requirements) {
+				NoteBlockInstrument instrument = NoteBlockInstrument.values()[note.instrument];
+				requiredInstruments.put(instrument, requiredInstruments.getOrDefault(instrument, 0) + 1);
+				for (BlockPos pos : noteblocks) {
+					if (blockPitches.containsKey(pos)) continue;
 
-				NoteBlockInstrument blockInstrument = getInstrumentUnderneath(pos);
-				if (note.instrument == blockInstrument.ordinal() && blockPitches.entrySet().stream().filter(e -> e.getValue() == note.pitch).noneMatch(e -> getInstrumentUnderneath(e.getKey()).ordinal() == blockInstrument.ordinal())) {
-					blockPitches.put(pos, note.pitch);
-					foundInstruments.put(blockInstrument, foundInstruments.getOrDefault(blockInstrument, 0) + 1);
-					break;
+					NoteBlockInstrument blockInstrument = getInstrumentUnderneath(pos);
+					if (note.instrument == blockInstrument.ordinal() && blockPitches.entrySet().stream().filter(e -> e.getValue() == note.pitch).noneMatch(e -> getInstrumentUnderneath(e.getKey()).ordinal() == blockInstrument.ordinal())) {
+						blockPitches.put(pos, note.pitch);
+						foundInstruments.put(blockInstrument, foundInstruments.getOrDefault(blockInstrument, 0) + 1);
+						break;
+					}
+				}
+			}
+
+			for (NoteBlockInstrument instrument : requiredInstruments.keySet()) {
+				int requiredCount = requiredInstruments.get(instrument);
+				int foundCount = foundInstruments.getOrDefault(instrument, 0);
+				int missingCount = requiredCount - foundCount;
+
+				if (missingCount > 0) {
+					ChatUtils.print(Component.literal("§6Warning: Missing §c" + missingCount + " §6" + instrument + " Noteblocks"));
 				}
 			}
 		}
-
-		for (NoteBlockInstrument instrument : requiredInstruments.keySet()) {
-			int requiredCount = requiredInstruments.get(instrument);
-			int foundCount = foundInstruments.getOrDefault(instrument, 0);
-			int missingCount = requiredCount - foundCount;
-
-			if (missingCount > 0) {
-				ChatUtils.print(Component.literal("§6Warning: Missing §c" + missingCount + " §6" + instrument + " Noteblocks"));
-			}
-		}
-
 	}
 
 	public NoteBotModule() {
@@ -227,7 +240,7 @@ public class NoteBotModule extends ToggleableModule {
 	}
 
 	@Subscribe
-	public void onUpdate(EventUpdate event){
+	private static void onUpdate(EventUpdate event){
 		if (!playing) return;
 
 		if (song == null) {
@@ -260,9 +273,10 @@ public class NoteBotModule extends ToggleableModule {
 				int neededNote = e.getValue() < note ? e.getValue() + 25 : e.getValue();
 				int reqTunes = Math.min(25, neededNote - note);
 				for (int i = 0; i < reqTunes; i++) {
-                    assert mc.gameMode != null;
-                    mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.upFromBottomCenterOf(e.getKey(), 1), Direction.UP, e.getKey(), true));
-                }
+					if (mc.gameMode != null) {
+						mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.upFromBottomCenterOf(e.getKey(), 1), Direction.UP, e.getKey(), true));
+					}
+				}
 
 				tuneDelay = 0;
 
@@ -290,12 +304,11 @@ public class NoteBotModule extends ToggleableModule {
 
 		timer++;
 
-		Collection<Note> curNotes = song.notes.get(timer);
-
-		if (curNotes.isEmpty()) return;
+		Collection<Note> curNote = song.notes.get(timer);
 
 		for (Entry<BlockPos, Integer> e : blockPitches.entrySet()) {
-			for (Note i : curNotes) {
+
+			for (Note i : curNote){
 				if (isNoteblock(e.getKey()) && (i.pitch == getNote(e.getKey())) && (i.instrument == getInstrumentUnderneath(e.getKey()).ordinal()))
 					playBlock(e.getKey());
 			}
@@ -315,19 +328,30 @@ public class NoteBotModule extends ToggleableModule {
 			private static Component queue() {
 				return listQueue();
 			}
-
 			@CommandExecutor(subCommand = "queue add")
 			@CommandExecutor.Argument({"string"})
 			private static Component queueadd(String string) {
-				NoteBotModule.queue.add(string);
-				final MutableComponent l1 = Component.literal("Added ").withStyle(Style.EMPTY.withColor(0xFFAA00));
-				final MutableComponent l2 = Component.literal(" to the queue").withStyle(Style.EMPTY.withColor(0xFFAA00));
-				final MutableComponent add = Component.empty()
-						.append(l1)
-						.append(string).withStyle(Style.EMPTY.withColor(0x55FF55))
-						.append(l2);
-				return add;
-			}
+				//just dont look at this shit please
+				final MutableComponent exists = Component.literal("File doesn't exist").withColor(0xFFAA00);
+				if (string != null) {
+					File file = new File(mc.gameDirectory.getPath() + "/rusherhack/notebot/songs/" + string);
+					if (file.exists()) {
+						NoteBotModule.queue.add(string);
+						final MutableComponent l1 = Component.literal("Added ").withStyle(Style.EMPTY.withColor(0xFFAA00));
+						final MutableComponent l2 = Component.literal(" to the queue").withStyle(Style.EMPTY.withColor(0xFFAA00));
+						final MutableComponent add = Component.empty()
+								.append(l1)
+								.append(string).withStyle(Style.EMPTY.withColor(0x55FF55))
+								.append(l2);
+						return add;
+					}
+					else
+					{
+						return exists;
+					}
+				}
+				return exists;
+            }
 
 			@CommandExecutor(subCommand = "queue del")
 			@CommandExecutor.Argument({"index"})

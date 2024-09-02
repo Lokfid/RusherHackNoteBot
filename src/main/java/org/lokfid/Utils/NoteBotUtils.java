@@ -1,5 +1,6 @@
 package org.lokfid.Utils;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import net.minecraft.Util;
@@ -17,7 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumMap;
+import java.util.*;
 
 
 public class NoteBotUtils {
@@ -54,7 +55,7 @@ public class NoteBotUtils {
     }
 
     public static Song parseMidi(Path path) {
-        Multimap<Integer, Note> notes = MultimapBuilder.linkedHashKeys().arrayListValues().build();
+        Multimap<Integer,Note> notes = MultimapBuilder.linkedHashKeys().arrayListValues().build();
         String name = FilenameUtils.getBaseName(path.toString());
         String author = "Unknown";
 
@@ -111,7 +112,7 @@ public class NoteBotUtils {
     }
 
     public static Song parseNbs(Path path) {
-        Multimap<Integer, Note> notes = MultimapBuilder.linkedHashKeys().arrayListValues().build();
+        Multimap<Integer,Note> notes = MultimapBuilder.linkedHashKeys().arrayListValues().build();
         String name = FilenameUtils.getBaseName(path.toString());
         String author = "Unknown";
         int version = 0;

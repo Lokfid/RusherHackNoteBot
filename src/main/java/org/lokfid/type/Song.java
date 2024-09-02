@@ -1,11 +1,7 @@
 package org.lokfid.type;
 
 import com.google.common.collect.Multimap;
-
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
-
+import java.util.*;
 
 public class Song {
     public String filename;

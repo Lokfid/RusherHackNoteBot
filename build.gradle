@@ -33,6 +33,7 @@ repositories {
 }
 
 dependencies {
+
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	
 	//mojmap + parchment mappings

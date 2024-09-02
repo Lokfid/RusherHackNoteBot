@@ -4,8 +4,6 @@ import org.rusherhack.client.api.RusherHackAPI;
 import org.rusherhack.client.api.plugin.Plugin;
 
 /**
- * Example rusherhack plugin
- *
  * @author Lokfid
  */
 public class NoteBotPlugin extends Plugin {
