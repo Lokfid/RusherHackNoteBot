@@ -25,7 +25,6 @@ import org.rusherhack.client.api.utils.ChatUtils;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.rusherhack.core.command.annotations.CommandExecutor;
-import org.rusherhack.core.command.argument.parser.IArg;
 import org.rusherhack.core.event.subscribe.Subscribe;
 
 import java.io.File;
