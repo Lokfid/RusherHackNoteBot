@@ -8,9 +8,13 @@ public class Note {
         this.pitch = pitch;
         this.instrument = instrument;
     }
+
+    @Override
     public int hashCode(){
         return pitch * 31 + instrument;
     }
+
+    @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof Note other)) return false;
 

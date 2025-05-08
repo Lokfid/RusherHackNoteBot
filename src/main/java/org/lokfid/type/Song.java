@@ -1,6 +1,6 @@
 package org.lokfid.type;
 
-import com.google.common.collect.Multimap;
+import com.google.common.collect.ArrayListMultimap;
 import java.util.*;
 
 public class Song {
@@ -9,11 +9,11 @@ public class Song {
     public String author;
     public String format;
 
-    public Multimap<Integer, Note> notes;
+    public ArrayListMultimap<Integer, Note> notes;
     public Set<Note> requirements = new HashSet<>();
     public int length;
 
-    public Song(String filename, String name, String author, String format, Multimap<Integer, Note> notes) {
+    public Song(String filename, String name, String author, String format, ArrayListMultimap<Integer, Note> notes) {
         this.filename = filename;
         this.name = name;
         this.author = author;

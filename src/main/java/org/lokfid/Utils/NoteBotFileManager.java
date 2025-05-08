@@ -1,26 +1,23 @@
 package org.lokfid.Utils;
 
-import net.minecraft.client.Minecraft;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class NoteBotFileManager {
-    private static Path dir;
-    private static Path songdir;
+import static org.rusherhack.client.api.Globals.mc;
 
-    public static void init(){
-        Minecraft mc = Minecraft.getInstance();
-        dir = Paths.get(mc.gameDirectory.getPath(), "rusherhack/notebot/");
-        if(!dir.toFile().exists()){
+public class NoteBotFileManager {
+
+    //I can def just remove dir and make songdir mkdirs but meh
+    public static final Path dir = Paths.get(mc.gameDirectory.getPath(), "rusherhack/notebot/");
+    public static final Path songdir = Paths.get(mc.gameDirectory.getPath(), "rusherhack/notebot/songs/");
+
+    public static void init() {
+        if (!dir.toFile().exists()) {
             dir.toFile().mkdirs();
         }
-        songdir = Paths.get(mc.gameDirectory.getPath(), "rusherhack/notebot/songs/");
-        if(!songdir.toFile().exists()){
+        if (!songdir.toFile().exists()) {
             songdir.toFile().mkdir();
-            }
-    }
-    public static Path getDir(){
-        return dir;
+        }
     }
 }

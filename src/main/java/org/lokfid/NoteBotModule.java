@@ -25,6 +25,7 @@ import org.rusherhack.client.api.utils.ChatUtils;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.rusherhack.core.command.annotations.CommandExecutor;
+import org.rusherhack.core.command.argument.parser.IArg;
 import org.rusherhack.core.event.subscribe.Subscribe;
 
 import java.io.File;
@@ -37,40 +38,120 @@ import java.util.Map.Entry;
  *
  * @author Lokfid
  */
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "SpellCheckingInspection"})
 public class NoteBotModule extends ToggleableModule {
-	/* Status */
 
-	public static boolean playing = false;
+	/* Status */
+	private static boolean playing = false;
 
 	/* Some settings */
 	public static boolean loop = false;
+	public static boolean loopqueue = false;
 
 	/* The loaded song */
-	public static Song song;
-	public static List<String> trail = new ArrayList<>();
-	public static List<String> queue = new ArrayList<>();
+	private static Song song;
+	private final static List<String> queue = new ArrayList<>();
 
-	private static Map<BlockPos, Integer> blockPitches = new HashMap<>();
+	private static final Map<BlockPos, Integer> blockPitches = new HashMap<>();
 	private static int timer = -10;
 	private static int tuneDelay = 0;
 
-	private static Component listQueue() {
-		StringBuilder result = new StringBuilder();
-		final MutableComponent l1 = Component.literal("Queue:").withStyle(ChatFormatting.GOLD);
-		final MutableComponent l2 = Component.literal("\n - ").withStyle(ChatFormatting.GOLD);
-
-		final MutableComponent list = Component.empty().append(l1).append(l2);
-		for (int i = 0; i < NoteBotModule.queue.size(); i++) {
-			final MutableComponent l3 = Component.literal(String.valueOf(i)).withStyle(ChatFormatting.YELLOW);
-			final MutableComponent l4 = Component.literal(": ").withStyle(ChatFormatting.YELLOW);
-			final MutableComponent l5 = Component.literal(NoteBotModule.queue.get(i)).withStyle(ChatFormatting.GREEN);
-			list.append(l3).append(l4).append(l5);
-		}
-
-		return list;
+	public NoteBotModule() {
+		super("NoteBot", "NoteBot Module (just turn it on)", ModuleCategory.CLIENT);
+		this.setHidden(true);
 	}
 
+
+	@Subscribe
+	private static void onUpdate(EventUpdate event){
+		if (!playing) return;
+
+		if (song == null) {
+			if (queue.isEmpty()) {
+				ChatUtils.print(Component.literal("§cYou have no songs in your queue!"));
+				stop();
+				return;
+			}
+
+			String cursong = queue.get(0);
+
+			song = NoteBotUtils.parse(NoteBotFileManager.songdir.resolve(queue.remove(0)));
+
+			if (loopqueue) queue.add(cursong);
+
+			loadSong();
+		}
+
+		// Tune Noteblocks
+		for (Entry<BlockPos, Integer> e : blockPitches.entrySet()) {
+			int note = getNote(e.getKey());
+			if (note == -1)
+				continue;
+
+			if (note != e.getValue()) {
+				if (tuneDelay < 5) {
+					tuneDelay++;
+					return;
+				}
+
+				int neededNote = e.getValue() < note ? e.getValue() + 25 : e.getValue();
+				int reqTunes = Math.min(25, neededNote - note);
+				for (int i = 0; i < reqTunes; i++) {
+					if (mc.gameMode != null) {
+						mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.upFromBottomCenterOf(e.getKey(), 1), Direction.UP, e.getKey(), true));
+					}
+				}
+
+				tuneDelay = 0;
+
+				return;
+			}
+		}
+
+		// Loop
+		if (timer - 10 > song.length) {
+			if (loop) {
+				timer = -10;
+				ChatUtils.print(ChatFormatting.GOLD + "Looping");
+			} else if (!queue.isEmpty()) {
+				song = null;
+				return;
+			} else {
+				ChatUtils.print(Component.literal("§6The queue is empty, stopping..."));
+				stop();
+				return;
+			}
+		}
+
+		if (timer == -10) {
+			ChatUtils.print(Component.literal("§6Now Playing: §a" + song.filename));
+		}
+
+		timer++;
+
+		Collection<Note> curNote = song.notes.get(timer);
+
+		for (Entry<BlockPos, Integer> e : blockPitches.entrySet()) {
+
+			for (Note i : curNote){
+				if (isNoteblock(e.getKey()) && (i.pitch == getNote(e.getKey())) && (i.instrument == getInstrumentUnderneath(e.getKey()).ordinal()))
+					playBlock(e.getKey());
+			}
+		}
+
+	}
+
+	@Override
+	public void onEnable() {
+		NoteBotFileManager.init();
+	}
+
+
+	@Override
+	public void onDisable() {
+		NoteBotModule.playing = false;
+		NoteBotModule.song = null;
+	}
 
 	public static int getNote(BlockPos pos) {
 		if (!isNoteblock(pos)) return -1;
@@ -78,8 +159,8 @@ public class NoteBotModule extends ToggleableModule {
 		if (mc.level != null) {
 			return mc.level.getBlockState(pos).getValue(NoteBlock.NOTE);
 		}
-        return 0;
-    }
+		return 0;
+	}
 	public static void playBlock(BlockPos pos) {
 		if (!isNoteblock(pos)) return;
 		if (mc.gameMode != null) {
@@ -101,8 +182,8 @@ public class NoteBotModule extends ToggleableModule {
 			// Return the instrument associated with the block underneath
 			return blockToInstrument(blockUnderneath);
 		}
-        return null;
-    }
+		return null;
+	}
 	public static NoteBlockInstrument blockToInstrument(Block block) {
 
 		// Specific block checks
@@ -167,8 +248,8 @@ public class NoteBotModule extends ToggleableModule {
 		if (mc.level != null) {
 			return mc.level.getBlockState(pos).getBlock() instanceof NoteBlock && mc.level.getBlockState(pos.above()).isAir();
 		}
-        return false;
-    }
+		return false;
+	}
 
 	public static void stop() {
 		playing = false;
@@ -180,25 +261,18 @@ public class NoteBotModule extends ToggleableModule {
 
 	public static void loadSong() {
 		blockPitches.clear();
-
-		try {
-            if(mc.gameMode != null) {
-				if (!mc.gameMode.getPlayerMode().isSurvival()) {
-					ChatUtils.print(Component.literal("§cNot in Survival mode!"));
-					return;
-				} else if (song == null) {
-					ChatUtils.print(Component.literal("§6No song in queue!, Use §c*notebot queueadd §6to add a song."));
-					return;
-				}
+		if(mc.gameMode != null) {
+			if (!mc.gameMode.getPlayerMode().isSurvival()) {
+				ChatUtils.print(Component.literal("§cNot in Survival mode!"));
+				return;
+			} else if (song == null) {
+				ChatUtils.print(Component.literal("§6No song in queue!, Use §c*notebot queueadd §6to add a song."));
+				return;
 			}
-		} catch (NullPointerException e) {
-			return;
 		}
-
-
 		timer = -10;
 
-        if (mc.player != null) {
+		if (mc.player != null) {
 			BlockPos playerEyePos = new BlockPos((int) mc.player.getEyePosition().x, (int) mc.player.getEyePosition().y, (int) mc.player.getEyePosition().z);
 
 			List<BlockPos> noteblocks = BlockPos.withinManhattanStream(playerEyePos, 5, 5, 5).filter(NoteBotModule::isNoteblock).map(BlockPos::immutable).toList();
@@ -233,87 +307,6 @@ public class NoteBotModule extends ToggleableModule {
 		}
 	}
 
-	public NoteBotModule() {
-		super("NoteBot", "NoteBot Module (just turn it on)", ModuleCategory.CLIENT);
-	}
-
-	@Subscribe
-	private static void onUpdate(EventUpdate event){
-		if (!playing) return;
-
-		if (song == null) {
-			if (queue.isEmpty()) {
-				ChatUtils.print(Component.literal("§cYou have no songs in your queue!"));
-				stop();
-				return;
-			}
-			NoteBotModule.song = NoteBotUtils.parse(
-					NoteBotFileManager.getDir().resolve(
-							"songs/" + NoteBotModule.queue.remove(0)
-					)
-			);
-
-			loadSong();
-		}
-
-		// Tune Noteblocks
-		for (Entry<BlockPos, Integer> e : blockPitches.entrySet()) {
-			int note = getNote(e.getKey());
-			if (note == -1)
-				continue;
-
-			if (note != e.getValue()) {
-				if (tuneDelay < 5) {
-					tuneDelay++;
-					return;
-				}
-
-				int neededNote = e.getValue() < note ? e.getValue() + 25 : e.getValue();
-				int reqTunes = Math.min(25, neededNote - note);
-				for (int i = 0; i < reqTunes; i++) {
-					if (mc.gameMode != null) {
-						mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.upFromBottomCenterOf(e.getKey(), 1), Direction.UP, e.getKey(), true));
-					}
-				}
-
-				tuneDelay = 0;
-
-				return;
-			}
-		}
-
-		// Loop
-		if (timer - 10 > song.length) {
-			if (loop) {
-				timer = -10;
-			} else if (!queue.isEmpty()) {
-				song = null;
-				return;
-			} else {
-				ChatUtils.print(Component.literal("§6The queue is empty, stopping..."));
-				stop();
-				return;
-			}
-		}
-
-		if (timer == -10) {
-			ChatUtils.print(Component.literal("§6Now Playing: §a" + song.filename));
-		}
-
-		timer++;
-
-		Collection<Note> curNote = song.notes.get(timer);
-
-		for (Entry<BlockPos, Integer> e : blockPitches.entrySet()) {
-
-			for (Note i : curNote){
-				if (isNoteblock(e.getKey()) && (i.pitch == getNote(e.getKey())) && (i.instrument == getInstrumentUnderneath(e.getKey()).ordinal()))
-					playBlock(e.getKey());
-			}
-		}
-
-	}
-
 	/*
 	Create Command
 	this code is shit but i will do nothing about it :D
@@ -322,14 +315,25 @@ public class NoteBotModule extends ToggleableModule {
 	@Override
 	public ModuleCommand createCommand() {
 		return new ModuleCommand(this){
+
 			@CommandExecutor(subCommand = "queue list")
 			private static Component queue() {
-				return listQueue();
+				final MutableComponent l1 = Component.literal("Queue:").withStyle(ChatFormatting.GOLD);
+				final MutableComponent list = Component.empty().append(l1);
+				for (int i = 0; i < NoteBotModule.queue.size(); i++) {
+					final MutableComponent l2 = Component.literal("\n - ").withStyle(ChatFormatting.GOLD);
+					final MutableComponent l3 = Component.literal(String.valueOf(i)).withStyle(ChatFormatting.YELLOW);
+					final MutableComponent l4 = Component.literal(": ").withStyle(ChatFormatting.YELLOW);
+					final MutableComponent l5 = Component.literal(NoteBotModule.queue.get(i)).withStyle(ChatFormatting.GREEN);
+					list.append(l2).append(l3).append(l4).append(l5);
+				}
+
+				return list;
 			}
+
 			@CommandExecutor(subCommand = "queue add")
 			@CommandExecutor.Argument({"string"})
 			private static Component queueadd(String string) {
-				//just dont look at this shit please
 				final MutableComponent exists = Component.literal("File doesn't exist").withColor(0xFFAA00);
 				if (string != null) {
 					File file = new File(mc.gameDirectory.getPath() + "/rusherhack/notebot/songs/" + string);
@@ -337,11 +341,10 @@ public class NoteBotModule extends ToggleableModule {
 						NoteBotModule.queue.add(string);
 						final MutableComponent l1 = Component.literal("Added ").withStyle(Style.EMPTY.withColor(0xFFAA00));
 						final MutableComponent l2 = Component.literal(" to the queue").withStyle(Style.EMPTY.withColor(0xFFAA00));
-						final MutableComponent add = Component.empty()
+						return Component.empty()
 								.append(l1)
 								.append(string).withStyle(Style.EMPTY.withColor(0x55FF55))
 								.append(l2);
-						return add;
 					}
 					else
 					{
@@ -349,11 +352,11 @@ public class NoteBotModule extends ToggleableModule {
 					}
 				}
 				return exists;
-            }
+			}
 
 			@CommandExecutor(subCommand = "queue del")
 			@CommandExecutor.Argument({"index"})
-			private static Component queuedel(int index) {
+			private static Component queuedelcommand(int index) {
 
 				String name;
 				final MutableComponent outofbounds = Component.literal("Index out of bounds.").withStyle(Style.EMPTY.withColor(0xFF5555));
@@ -366,57 +369,55 @@ public class NoteBotModule extends ToggleableModule {
 				} catch (IndexOutOfBoundsException e) {
 					return outofbounds;
 				}
-				final MutableComponent del = Component.empty()
+				return Component.empty()
 						.append(l1).append(" " + name + " ").withColor(0x55FF55)
 						.append(l2)
 						.append(" ")
 						.append(l4)
 						.append(" ")
 						.append(l3);
-				return del;
 			}
 
 			@CommandExecutor(subCommand = "queue clear")
-			private static Component queueclear() {
+			private static Component queueclearcommand() {
 				int amount = NoteBotModule.queue.size();
 				NoteBotModule.queue.clear();
 				final MutableComponent l1 = Component.literal("Cleared ").withColor(0xFFAA00);
 				final MutableComponent l2 = Component.literal(String.valueOf(amount)).withColor(0x55FF55);
 				final MutableComponent l3 = Component.literal(" songs from the queue.").withColor(0xFFAA00);
 				final MutableComponent lspace = Component.literal("");
-				final MutableComponent clear = Component.empty().append(l1).append(l2).append(lspace).append(l3);
-				return clear;
+				return Component.empty().append(l1).append(l2).append(lspace).append(l3);
 			}
 
 
 			@CommandExecutor(subCommand = "start")
-			private void start() {
-				if(!NoteBotModule.super.isToggled()){
-					NoteBotModule.super.toggle();
-				}
+			private void startcommand() {
+				if (!NoteBotModule.this.isHidden()) NoteBotModule.this.setHidden(true);
+				if(!NoteBotModule.this.isToggled()) NoteBotModule.this.toggle();
 				NoteBotModule.playing = true;
 			}
 
 			@CommandExecutor(subCommand = {"stop"})
-			private static void stop( ) {
-				NoteBotModule.playing = false;
-				NoteBotModule.song = null;
+			private Component stopcommand() {
+				stop();
+				if (NoteBotModule.this.isToggled()) NoteBotModule.this.toggle();
+				return Component.literal(ChatFormatting.GOLD + "NoteBot stopped");
+			}
+
+			@CommandExecutor(subCommand = {"loop song"})
+			private static Component loopcommand(){
+				if (loopqueue) return Component.literal(ChatFormatting.GOLD + "Turn off queue loop 1st");
+				loop = !loop;
+				return Component.literal(ChatFormatting.GOLD + "Song looping set to " + ChatFormatting.GREEN + (loop ? "true" : "false"));
+			}
+
+			@CommandExecutor(subCommand = {"loop queue"})
+			private static Component loopqueuecommand(){
+				if (loop) return Component.literal(ChatFormatting.GOLD + "Turn off song loop 1st");
+				loopqueue = !loopqueue;
+				return Component.literal(ChatFormatting.GOLD + "Queue looping set to " + ChatFormatting.GREEN + (loopqueue ? "true" : "false"));
 			}
 		};
-	}
-
-
-
-	@Override
-	public void onEnable() {
-		NoteBotFileManager.init();
-		}
-
-
-	@Override
-	public void onDisable() {
-		NoteBotModule.playing = false;
-		NoteBotModule.song = null;
 	}
 
 }
